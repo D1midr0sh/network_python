@@ -214,6 +214,7 @@ async def fetch_as_completed(tasks: list[tuple[str, float]]) -> list[str]:
     results: list[str] = []
     for completed in asyncio.as_completed(coros):
         results.append(await completed)
+
     return results
 
 
