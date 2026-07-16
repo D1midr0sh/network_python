@@ -4,10 +4,11 @@ import sys
 import os
 
 sys.path.insert(0, os.path.dirname(__file__))
+sys.modules.pop("task", None)
 
 from starlette.testclient import TestClient
 
-from solution import app
+from task import app
 
 client = TestClient(app)
 
