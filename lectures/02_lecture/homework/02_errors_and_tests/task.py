@@ -21,8 +21,10 @@
     Покрыть все эндпоинты.
 """
 
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+import asyncio
+import threading
+
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 app = FastAPI()
@@ -30,6 +32,8 @@ app = FastAPI()
 ITEMS: dict[int, dict] = {}
 NEXT_ID = 1
 COUNTER = 0
+
+_counter_lock = threading.Lock()
 
 
 class ItemCreate(BaseModel):
@@ -52,43 +56,51 @@ def list_items():
 
 @app.get("/items/{item_id}")
 def get_item(item_id: int):
-    # TODO:
-    raise NotImplementedError
+    if item_id not in ITEMS:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return ITEMS[item_id]
 
 
 @app.post("/items", status_code=201)
 def create_item(item: ItemCreate):
-    # TODO:
-    raise NotImplementedError
+    global NEXT_ID
+    new_id = NEXT_ID
+    NEXT_ID += 1
+    ITEMS[new_id] = {"id": new_id, "name": item.name}
+    return {"id": new_id}
 
 
 @app.get("/items/{item_id}/counter")
 def get_counter(item_id: int):
-    # TODO:
     global COUNTER
-    COUNTER += 1
-    return {"counter": COUNTER}
+    with _counter_lock:
+        COUNTER += 1
+        return {"counter": COUNTER}
 
 
 @app.put("/items/{item_id}")
 def update_item(item_id: int, update: ItemUpdate):
-    # TODO:
-    raise NotImplementedError
+    if item_id not in ITEMS:
+        raise HTTPException(status_code=404, detail="Item not found")
+    ITEMS[item_id] = {"id": item_id, "name": update.name}
+    return ITEMS[item_id]
 
 
-@app.delete("/items/{item_id}")
+@app.delete("/items/{item_id}", status_code=204)
 def delete_item(item_id: int):
-    # TODO:
-    raise NotImplementedError
+    if item_id not in ITEMS:
+        raise HTTPException(status_code=404, detail="Item not found")
+    del ITEMS[item_id]
 
 
 @app.get("/divide")
 def divide(a: int, b: int):
-    # TODO:
-    raise NotImplementedError
+    if b == 0:
+        raise HTTPException(status_code=400, detail="Division by zero")
+    return {"result": a / b}
 
 
 @app.get("/slow-sync")
 async def slow_sync():
-    # TODO:
-    raise NotImplementedError
+    await asyncio.sleep(0.5)
+    return {"status": "done"}
