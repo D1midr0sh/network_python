@@ -13,6 +13,12 @@ multiprocessing.Pool.
    lectures/01_lecture/examples/03_multiprocessing/02_cpu_bound.py
 """
 
+import sys
+from multiprocessing import get_context
+from concurrent.futures import ThreadPoolExecutor
+
+_TASK_MODULE = sys.modules[__name__]
+
 
 # ═══════════════════════════════════════════════════════════
 # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ — не меняйте их
@@ -54,8 +60,7 @@ def compute_sequential(numbers: list[int]) -> list[int]:
 
     Просто для сравнения с параллельной версией.
     """
-    # TODO: реализуйте
-    raise NotImplementedError
+    return [heavy_compute(x) for x in numbers]
 
 
 def compute_parallel_pool(numbers: list[int], processes: int = 4) -> list[int]:
@@ -65,8 +70,12 @@ def compute_parallel_pool(numbers: list[int], processes: int = 4) -> list[int]:
         - Использовать Pool(processes) как context manager
         - Результаты в порядке numbers
     """
-    # TODO: реализуйте
-    raise NotImplementedError
+    if not numbers:
+        return []
+
+    sys.modules["task"] = _TASK_MODULE
+    with get_context("fork").Pool(processes=processes) as pool:
+        return pool.map(heavy_compute, numbers)
 
 
 # ═══════════════════════════════════════════════════════════
@@ -79,5 +88,8 @@ def compute_with_threads(numbers: list[int], workers: int = 4) -> list[int]:
 
     Должно работать МЕДЛЕННЕЕ, чем Pool, из-за GIL.
     """
-    # TODO: реализуйте
-    raise NotImplementedError
+    if not numbers:
+        return []
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        return list(pool.map(heavy_compute, numbers))

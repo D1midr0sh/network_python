@@ -16,6 +16,7 @@
 """
 
 from typing import Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 # ═══════════════════════════════════════════════════════════
@@ -61,8 +62,11 @@ def fetch_all(urls: list[str], max_workers: int = 4) -> list[str]:
         >>> fetch_all(["a", "b", "c"], max_workers=2)
         ['data:a', 'data:b', 'data:c']
     """
-    # TODO: реализуйте
-    raise NotImplementedError
+    if not urls:
+        return []
+
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        return list(pool.map(fetch_one, urls))
 
 
 # ═══════════════════════════════════════════════════════════
@@ -85,8 +89,27 @@ def fetch_all_with_errors(urls: list[str], max_workers: int = 4) -> list[str | N
         - Для "bad" URL вернуть None
         - Для остальных — результат fetch_one()
     """
-    # TODO: реализуйте
-    raise NotImplementedError
+    if not urls:
+        return []
+
+    def fetch_or_none(url: str) -> str | None:
+        if "bad" in url:
+            raise ConnectionError(f"Не удалось подключиться к {url}")
+        return fetch_one(url)
+
+    results: list[str | None] = [None] * len(urls)
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        future_to_index = {
+            pool.submit(fetch_or_none, url): index for index, url in enumerate(urls)
+        }
+        for future in as_completed(future_to_index):
+            index = future_to_index[future]
+            try:
+                results[index] = future.result()
+            except ConnectionError:
+                results[index] = None
+
+    return results
 
 
 # ═══════════════════════════════════════════════════════════
@@ -123,5 +146,18 @@ def fetch_all_with_progress(
         )
         # completed[-1] == 3
     """
-    # TODO: реализуйте
-    raise NotImplementedError
+    if not urls:
+        return []
+
+    total = len(urls)
+    completed = 0
+    results: list[str] = []
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = [pool.submit(fetch_one, url) for url in urls]
+        for future in as_completed(futures):
+            results.append(future.result())
+            completed += 1
+            if progress_callback is not None:
+                progress_callback(completed, total)
+
+    return results
